@@ -1,11 +1,17 @@
+// tag::code[]
+// tag::import[]
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <typedb_driver.hpp>
-
+// end::import[]
+// tag::constants[]
 const std::string DB_NAME = "sample_app_db";
 const std::string SERVER_ADDR = "127.0.0.1:1729";
-
+enum edition { core, cloud };
+edition TYPEDB_EDITION = edition::core;
+// end::constants[]
+// tag::create_new_db[]
 bool createNewDatabase(TypeDB::Driver& driver, const std::string& dbName, bool dbReset = false) {
     if (driver.databases.contains(dbName)) {
         if (dbReset) {
@@ -32,7 +38,8 @@ bool createNewDatabase(TypeDB::Driver& driver, const std::string& dbName, bool d
         return true;
     }
 }
-
+// end::create_new_db[]
+// tag::db-schema-setup[]
 void dbSchemaSetup(TypeDB::Session& schemaSession, const std::string& schemaFile = "iam-schema.tql") {
     std::string defineQuery;
     std::ifstream newfile;
@@ -54,7 +61,8 @@ void dbSchemaSetup(TypeDB::Session& schemaSession, const std::string& schemaFile
     tx.commit();
     std::cout << "OK" << std::endl;
 }
-
+// end::db-schema-setup[]
+// tag::db-dataset-setup[]
 void dbDatasetSetup(TypeDB::Session& dataSession, const std::string& dataFile = "iam-data-single-query.tql") {
     std::ifstream file(dataFile);
     std::string insertQuery((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
@@ -67,7 +75,8 @@ void dbDatasetSetup(TypeDB::Session& dataSession, const std::string& dataFile = 
     tx.commit();
     std::cout << "OK" << std::endl;
 }
-
+// end::db-dataset-setup[]
+// tag::test-db[]
 bool testInitialDatabase(TypeDB::Session& dataSession) {
     TypeDB::Options options;
     TypeDB::Transaction tx = dataSession.transaction(TypeDB::TransactionType::READ, options);
@@ -83,7 +92,8 @@ bool testInitialDatabase(TypeDB::Session& dataSession) {
         return false;
     }
 }
-
+// end::test-db[]
+// tag::db-setup[]
 bool dbSetup(TypeDB::Driver& driver, const std::string& dbName, bool dbReset = false) {
     std::cout << "Setting up the database: " << dbName << std::endl;
     bool newDatabase = createNewDatabase(driver, dbName, dbReset);
@@ -107,7 +117,8 @@ bool dbSetup(TypeDB::Driver& driver, const std::string& dbName, bool dbReset = f
         return testInitialDatabase(session);
     }
 }
-
+// end::db-setup[]
+// tag::json[]
 void printJSON(TypeDB::JSON json) {
     if (json.isString()) {
         std::cout << "'" << json.asString() << "'" << std::endl;
@@ -120,7 +131,8 @@ void printJSON(TypeDB::JSON json) {
             }
     }
 }
-
+// end::json[]
+// tag::fetch[]
 std::vector<TypeDB::JSON> fetchAllUsers(TypeDB::Driver& driver, const std::string& dbName) {
     std::vector<TypeDB::JSON> users;
     TypeDB::Options options;
@@ -138,7 +150,8 @@ std::vector<TypeDB::JSON> fetchAllUsers(TypeDB::Driver& driver, const std::strin
     }
     return users;
 }
-
+// end::fetch[]
+// tag::insert[]
 std::vector<TypeDB::ConceptMap> insertNewUser(TypeDB::Driver& driver, const std::string& dbName, const std::string& name, const std::string& email) {
     std::vector<TypeDB::ConceptMap> response;
     TypeDB::Options options;
@@ -155,7 +168,8 @@ std::vector<TypeDB::ConceptMap> insertNewUser(TypeDB::Driver& driver, const std:
     }
     return response;
 }
-
+// end::insert[]
+// tag::get[]
 std::vector<std::string> getFilesByUser(TypeDB::Driver& driver, const std::string& dbName, const std::string& name, bool inference = false) {
     TypeDB::Options options;
     options.infer(inference);
@@ -196,7 +210,8 @@ std::vector<std::string> getFilesByUser(TypeDB::Driver& driver, const std::strin
         }
     }
 }
-
+// end::get[]
+// tag::update[]
 int16_t updateFilePath(TypeDB::Driver& driver, const std::string& dbName, const std::string& oldPath, const std::string& newPath) {
     std::vector<TypeDB::ConceptMap> response;
     int16_t count = 0;
@@ -224,7 +239,8 @@ int16_t updateFilePath(TypeDB::Driver& driver, const std::string& dbName, const 
     }
     return count;
 }
-
+// end::update[]
+// tag::delete[]
 bool deleteFile(TypeDB::Driver& driver, const std::string& dbName, const std::string& path) {
     {
         TypeDB::Options options;
@@ -258,43 +274,58 @@ bool deleteFile(TypeDB::Driver& driver, const std::string& dbName, const std::st
         }
     }
 }
-
-int main() {
-    TypeDB::Driver driver = TypeDB::Driver::coreDriver("127.0.0.1:1729");
-
-    if (!driver.isOpen()) {
-        std::cerr << "Failed to connect to TypeDB server. Terminating..." << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
-    if (!dbSetup(driver, DB_NAME)) {
-        std::cerr << "Failed to set up the databse. Terminating..." << std::endl;
-        exit(EXIT_FAILURE);
-    }
-
+// end::delete[]
+// tag::queries[]
+void queries(TypeDB::Driver& driver, const std::string& dbName) {
     std::cout << "\nRequest 1 of 6: Fetch all users as JSON objects with full names and emails" << std::endl;
-    std::vector<TypeDB::JSON> users = fetchAllUsers(driver, DB_NAME);
+    std::vector<TypeDB::JSON> users = fetchAllUsers(driver, dbName);
 
     std::string newName = "Jack Keeper";
     std::string newEmail = "jk@vaticle.com";
     std::cout << "\nRequest 2 of 6: Add a new user with the full-name " << newName << " and email " << newEmail << std::endl;
-    insertNewUser(driver, DB_NAME, newName, newEmail);
+    insertNewUser(driver, dbName, newName, newEmail);
 
     std::string name = "Kevin Morrison";
     std::cout << "\nRequest 3 of 6: Find all files that the user " << name << " has access to view (no inference)" << std::endl;
-    std::vector<std::string> noFiles = getFilesByUser(driver, DB_NAME, name);
+    std::vector<std::string> noFiles = getFilesByUser(driver, dbName, name);
 
     std::cout << "\nRequest 4 of 6: Find all files that the user " << name << " has access to view (with inference)" << std::endl;
-    std::vector<std::string> files = getFilesByUser(driver, DB_NAME, name, true);
+    std::vector<std::string> files = getFilesByUser(driver, dbName, name, true);
 
     std::string oldPath = "lzfkn.java";
     std::string newPath = "lzfkn2.java";
     std::cout << "\nRequest 5 of 6: Update the path of a file from " << oldPath << " to " << newPath << std::endl;
-    int16_t updatedFiles = updateFilePath(driver, DB_NAME, oldPath, newPath);
+    int16_t updatedFiles = updateFilePath(driver, dbName, oldPath, newPath);
 
     std::string filePath = "lzfkn2.java";
     std::cout << "\nRequest 6 of 6: Delete the file with path " << filePath << std::endl;
-    bool deleted = deleteFile(driver, DB_NAME, filePath);
-
-    return 0;
+    bool deleted = deleteFile(driver, dbName, filePath);
 }
+// end::queries[]
+// tag::connection[]
+TypeDB::Driver connectToTypedb(const edition typedb_edition, 
+                                const std::string& addr, 
+                                const std::string& username="admin", 
+                                const std::string& password="password",
+                                const bool encryption = true) {
+    if (typedb_edition == edition::core) { return TypeDB::Driver::coreDriver("127.0.0.1:1729"); };
+    if (typedb_edition == edition::cloud) { return TypeDB::Driver::cloudDriver({"127.0.0.1:1729"}, TypeDB::Credential(username, password, encryption));; };
+    exit(EXIT_FAILURE);
+}
+// end::connection[]
+// tag::main[]
+int main() {
+    TypeDB::Driver driver = connectToTypedb(TYPEDB_EDITION, SERVER_ADDR);
+    if (driver.isOpen()) {
+        if (dbSetup(driver, DB_NAME)) {
+            queries(driver, DB_NAME);
+            return EXIT_SUCCESS;
+        } else {
+            std::cerr << "Failed to set up the databse. Terminating..." << std::endl;
+        }
+    } else {
+        std::cerr << "Failed to connect to TypeDB server. Terminating..." << std::endl;
+    }
+    exit(EXIT_FAILURE);
+}
+// end::main[]
