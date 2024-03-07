@@ -10,9 +10,11 @@ const std::string DB_NAME = "sample_app_db";
 const std::string SERVER_ADDR = "127.0.0.1:1729";
 enum edition { core, cloud };
 edition TYPEDB_EDITION = edition::core;
+const std::string CLOUD_USERNAME = "admin";
+const std::string CLOUD_PASSWORD = "password";
 // end::constants[]
 // tag::create_new_db[]
-bool createNewDatabase(TypeDB::Driver& driver, const std::string& dbName, bool dbReset = false) {
+bool tryCreateDatabase(TypeDB::Driver& driver, const std::string& dbName, bool dbReset = false) {
     if (driver.databases.contains(dbName)) {
         if (dbReset) {
             std::cout << "Replacing an existing database...";
@@ -25,7 +27,7 @@ bool createNewDatabase(TypeDB::Driver& driver, const std::string& dbName, bool d
             std::cout << "Found a pre-existing database. Do you want to replace it? (Y/N) ";
             std::cin >> answer;
             if (answer == "Y" || answer == "y") {
-                return createNewDatabase(driver, dbName, true);
+                return tryCreateDatabase(driver, dbName, true);
             } else {
                 std::cout << "Reusing an existing database." << std::endl;
                 return false;
@@ -96,13 +98,13 @@ bool testInitialDatabase(TypeDB::Session& dataSession) {
 // tag::db-setup[]
 bool dbSetup(TypeDB::Driver& driver, const std::string& dbName, bool dbReset = false) {
     std::cout << "Setting up the database: " << dbName << std::endl;
-    bool newDatabase = createNewDatabase(driver, dbName, dbReset);
+    bool isNew = tryCreateDatabase(driver, dbName, dbReset);
     if (!driver.databases.contains(dbName)) {
         std::cout << "Database creation failed. Terminating..." << std::endl;
         exit(EXIT_FAILURE);
     }
     TypeDB::Options options;
-    if (newDatabase) {
+    if (isNew) {
         {
             TypeDB::Session session = driver.session(dbName, TypeDB::SessionType::SCHEMA, options);
             dbSchemaSetup(session);
@@ -126,7 +128,7 @@ void printJSON(TypeDB::JSON json) {
     if (json.isMap()) {
         TypeDB::JSONMap jsonMap = json.asMap();
         for (const auto& p : jsonMap ) {
-                std::cout << p.first << ": "<< std::endl; 
+                std::cout << p.first << ": "<< std::endl;
                 printJSON(p.second);
             }
     }
@@ -215,7 +217,7 @@ std::vector<std::string> getFilesByUser(TypeDB::Driver& driver, const std::strin
 int16_t updateFilePath(TypeDB::Driver& driver, const std::string& dbName, const std::string& oldPath, const std::string& newPath) {
     std::vector<TypeDB::ConceptMap> response;
     int16_t count = 0;
-    {   
+    {
         TypeDB::Options options;
         TypeDB::Session session = driver.session(dbName, TypeDB::SessionType::DATA, options);
         TypeDB::Transaction tx = session.transaction(TypeDB::TransactionType::WRITE, options);
@@ -303,13 +305,13 @@ void queries(TypeDB::Driver& driver, const std::string& dbName) {
 }
 // end::queries[]
 // tag::connection[]
-TypeDB::Driver connectToTypedb(const edition typedb_edition, 
-                                const std::string& addr, 
-                                const std::string& username="admin", 
-                                const std::string& password="password",
+TypeDB::Driver connectToTypedb(const edition typedb_edition,
+                                const std::string& addr,
+                                const std::string& username=CLOUD_USERNAME,
+                                const std::string& password=CLOUD_PASSWORD,
                                 const bool encryption = true) {
-    if (typedb_edition == edition::core) { return TypeDB::Driver::coreDriver("127.0.0.1:1729"); };
-    if (typedb_edition == edition::cloud) { return TypeDB::Driver::cloudDriver({"127.0.0.1:1729"}, TypeDB::Credential(username, password, encryption));; };
+    if (typedb_edition == edition::core) { return TypeDB::Driver::coreDriver(addr); };
+    if (typedb_edition == edition::cloud) { return TypeDB::Driver::cloudDriver({addr}, TypeDB::Credential(username, password, encryption));; };
     exit(EXIT_FAILURE);
 }
 // end::connection[]
