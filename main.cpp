@@ -331,7 +331,7 @@ int main() {
             queries(driver, DB_NAME);
             return EXIT_SUCCESS;
         } else {
-            std::cerr << "Failed to set up the databse. Terminating..." << std::endl;
+            std::cerr << "Failed to set up the database. Terminating..." << std::endl;
             exit(EXIT_FAILURE);
         }
     } else {
